@@ -1,0 +1,123 @@
+Lab 1: Secure Environment Setup for Advanced ML
+Objective
+Configure a secure Linux-based environment optimized for advanced machine learning tasks, set up Python, Jupyter, and essential ML libraries.
+
+Prerequisites
+Ubuntu-based machine (or any Linux distribution)
+
+Basic Linux administration skills (sudo access)
+
+Steps
+Step 1: Install and Configure the Linux Environment for ML
+Install the latest updates for Ubuntu:
+
+sudo apt update && sudo apt upgrade -y
+Install essential development tools:
+These tools will allow you to compile packages that are necessary for ML libraries.
+
+sudo apt install build-essential dkms curl git wget -y
+Add necessary PPAs and repositories:
+
+Add the Python 3.9 repository (or any other latest Python version).
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install python3.9 python3.9-venv python3.9-dev python3-pip -y
+Secure the environment:
+
+Set up ufw (Uncomplicated Firewall) to limit unwanted access to your system.
+sudo apt install ufw -y
+sudo ufw allow OpenSSH  # Allow SSH
+sudo ufw enable
+sudo ufw status
+Disable root access to enhance security (if necessary):
+sudo passwd -l root
+Enable fail2ban to prevent brute-force attacks:
+sudo apt install fail2ban -y
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+Step 2: Set Up Python and Virtual Environments
+Install Python 3.9 and pip:
+
+sudo apt install python3-pip -y
+Install and set up a virtual environment to isolate your ML projects:
+
+python3 -m venv ml_env
+source ml_env/bin/activate
+This will activate a clean Python environment where you can install dependencies without interfering with the system Python.
+Step 3: Install Jupyter Notebook and Necessary Libraries
+Install Jupyter Notebook:
+
+pip install jupyter
+After installation, you can start Jupyter Notebook by running:
+
+jupyter notebook
+This will start Jupyter Notebook and open it in your default web browser (typically at http://localhost:8888).
+Install essential Machine Learning libraries:
+
+Install popular ML libraries like NumPy, Pandas, Scikit-learn, TensorFlow, and PyTorch:
+pip install numpy pandas scikit-learn matplotlib seaborn tensorflow pytorch
+Additional libraries for deep learning:
+pip install keras opencv-python pillow
+Step 4: Verify the Installation
+Verify Python and Jupyter installation:
+
+Check Python version:
+python --version
+Run Jupyter Notebook:
+jupyter notebook
+Verify ML libraries:
+
+Open a Jupyter notebook and test basic functionality:
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import tensorflow as tf
+import torch
+
+print("Libraries loaded successfully!")
+Step 5: Secure Jupyter Notebook
+To enhance the security of your Jupyter Notebook server, use a password and enable HTTPS for secure connections.
+
+Set a password for Jupyter:
+Run the following command to generate a configuration file:
+
+jupyter notebook --generate-config
+Set a password for Jupyter:
+
+jupyter notebook password
+Configure Jupyter to use HTTPS:
+
+You can set up SSL by generating certificates or using an existing one.
+
+Modify the ~/.jupyter/jupyter_notebook_config.py to add:
+
+c.NotebookApp.certfile = u'/path/to/your/certificate.pem'
+c.NotebookApp.keyfile = u'/path/to/your/privatekey.pem'
+c.NotebookApp.ip = '0.0.0.0'
+c.NotebookApp.open_browser = False
+c.NotebookApp.port = 8888
+Step 6: Test the Setup
+Run Jupyter Notebook:
+After configuration, run:
+
+jupyter notebook
+Access Jupyter via https://localhost:8888 (or replace with your server IP if remote).
+
+Test ML Libraries:
+Open a new notebook and run the following test code:
+
+import tensorflow as tf
+print(f"TensorFlow version: {tf.__version__}")
+print(f"PyTorch version: {torch.__version__}")
+Conclusion
+In this lab, you:
+
+Configured a secure Linux environment for advanced machine learning.
+
+Set up Python, Jupyter, and essential ML libraries (TensorFlow, PyTorch, Scikit-learn).
+
+Secured the Jupyter Notebook server with password protection and HTTPS.
+
+Tested the environment to ensure everything is working correctly for advanced machine learning tasks.
+
+This setup provides you with a secure environment optimized for advanced machine learning projects, ensuring your data and models are handled in a safe and isolated environment.
