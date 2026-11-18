@@ -1,0 +1,196 @@
+Lab 3: Cloud-native ML Model Deployment with Kubernetes
+Objective
+Master the process of deploying machine learning models in a cloud-native environment using Docker and Kubernetes. This involves containerizing a trained model, setting up a Kubernetes cluster, and deploying the containerized model for scalable serving.
+
+Prerequisites
+Ubuntu Machine
+
+Docker and Kubernetes (Minikube for local setup)
+
+A trained machine learning model (we’ll use a simple TensorFlow model for this lab)
+
+Step 1: Install Docker and Kubernetes (Minikube)
+1. Install Docker:
+sudo apt update
+sudo apt install docker.io -y
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -aG docker $USER  # Add user to the Docker group
+Verify Docker installation:
+
+docker --version
+2. Install Minikube (for local Kubernetes setup):
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+chmod +x minikube
+sudo mv minikube /usr/local/bin/
+Start Minikube:
+
+minikube start --driver=docker
+3. Install kubectl (Kubernetes CLI):
+sudo apt install kubectl -y
+Check Kubernetes cluster status:
+
+kubectl cluster-info
+Step 2: Containerize a Trained ML Model Using Docker
+1. Train and Save a Simple ML Model (TensorFlow Example)
+Let's train a simple TensorFlow model. You can skip this if you already have a pre-trained model.
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+import numpy as np
+
+# Create a simple neural network model
+model = Sequential([
+    Dense(128, activation='relu', input_shape=(784,)),
+    Dense(10, activation='softmax')
+])
+
+# Compile the model
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+# Load the MNIST dataset (use only the training part)
+(x_train, y_train), (_, _) = tf.keras.datasets.mnist.load_data()
+x_train = x_train.reshape(-1, 784).astype('float32') / 255
+
+# Train the model
+model.fit(x_train, y_train, epochs=5, batch_size=32)
+
+# Save the model to a file
+model.save('mnist_model.h5')
+2. Create a Dockerfile for Containerizing the Model
+Next, we’ll create a Docker image for serving the trained model.
+
+Create a directory for the Docker project:
+mkdir my_ml_model
+cd my_ml_model
+Copy the trained model (mnist_model.h5) into the project directory.
+
+Create a Dockerfile to define the container:
+
+nano Dockerfile
+# Use an official TensorFlow runtime as the base image
+FROM tensorflow/tensorflow:2.7.0
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the trained model into the container
+COPY mnist_model.h5 /app/
+
+# Install dependencies
+RUN pip install flask tensorflow
+
+# Create an API to serve the model using Flask
+COPY app.py /app/
+
+# Expose port 5000
+EXPOSE 5000
+
+# Start the Flask app
+CMD ["python", "app.py"]
+4. Create the Flask API (app.py) to Serve the Model
+Create the app.py file that will handle requests and serve predictions.
+
+nano app.py
+from flask import Flask, request, jsonify
+import tensorflow as tf
+import numpy as np
+from tensorflow.keras.models import load_model
+
+app = Flask(__name__)
+
+# Load the pre-trained model
+model = load_model('mnist_model.h5')
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()  # Get the input data
+    image = np.array(data['image'])  # The input image should be sent as a 28x28 pixel array
+    image = image.reshape(1, 784)  # Reshape it to match the model's input shape
+    image = image.astype('float32') / 255  # Normalize the image
+
+    # Make prediction
+    prediction = model.predict(image)
+    predicted_class = np.argmax(prediction)
+
+    return jsonify({'prediction': int(predicted_class)})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+This simple API will receive an image (in the form of a JSON object), preprocess it, make a prediction using the trained model, and return the predicted class.
+
+5. Build and Run the Docker Container
+Now, build the Docker image and run it locally:
+
+docker build -t mnist_model .
+docker run -p 5000:5000 mnist_model
+You should be able to access the Flask API by sending requests to http://localhost:5000.
+
+Step 3: Set Up Kubernetes and Deploy the Containerized Model
+1. Create a Kubernetes Deployment for the Model
+Create a Kubernetes Deployment YAML file (deployment.yaml):
+nano deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mnist-model-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mnist-model
+  template:
+    metadata:
+      labels:
+        app: mnist-model
+    spec:
+      containers:
+        - name: mnist-model
+          image: mnist_model:latest  # Use the image we built earlier
+          ports:
+            - containerPort: 5000
+2. Create a Kubernetes Service for the Model
+Create a Kubernetes Service YAML file (service.yaml):
+nano service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mnist-model-service
+spec:
+  selector:
+    app: mnist-model
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: LoadBalancer
+3. Deploy the Model on Kubernetes
+Now, deploy the containerized model and expose it using Kubernetes.
+
+Apply the deployment and service configurations:
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+Check the status of the deployment and service:
+kubectl get deployments
+kubectl get services
+4. Access the Model API
+You can now access the model API by using Minikube’s IP address (or use kubectl port-forward to expose the port).
+
+For example, to access the API via Minikube:
+
+minikube service mnist-model-service --url
+This will give you the URL where you can make POST requests to the /predict endpoint.
+
+Conclusion
+In this lab, you:
+
+Containerized a trained TensorFlow model using Docker.
+
+Set up a Flask API to serve the model's predictions.
+
+Configured a Kubernetes deployment and service to deploy the containerized model for scalable serving.
+
+Successfully deployed the model on a Kubernetes cluster using Minikube and accessed the model API for predictions.
+
+This lab provides hands-on experience with deploying machine learning models in a cloud-native environment using Docker and Kubernetes, ensuring scalability and flexibility for serving machine learning models in production.
