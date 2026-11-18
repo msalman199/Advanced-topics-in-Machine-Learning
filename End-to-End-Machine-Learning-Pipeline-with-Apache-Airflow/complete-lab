@@ -1,0 +1,165 @@
+Lab 4: End-to-End Machine Learning Pipeline with Apache Airflow
+Objective
+Automate the entire machine learning workflow using Apache Airflow. You will set up an Airflow environment, configure it for ML tasks, and create a DAG for a full pipeline including data ingestion, preprocessing, model training, and model evaluation.
+
+Prerequisites
+Ubuntu Machine
+
+Python 3.7+
+
+Apache Airflow and ML libraries such as scikit-learn, pandas, and numpy.
+
+Install dependencies:
+Install Apache Airflow using pip:
+
+pip install apache-airflow
+Install additional machine learning libraries:
+
+pip install scikit-learn pandas numpy matplotlib
+Install PostgreSQL (Airflow's default backend):
+
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+Create a PostgreSQL database for Airflow:
+
+sudo -u postgres psql
+CREATE DATABASE airflow;
+CREATE USER airflow_user WITH PASSWORD 'airflow_password';
+ALTER ROLE airflow_user SET client_encoding TO 'utf8';
+ALTER ROLE airflow_user SET default_transaction_isolation TO 'read committed';
+ALTER ROLE airflow_user SET timezone TO 'UTC';
+GRANT ALL PRIVILEGES ON DATABASE airflow TO airflow_user;
+\q
+You now have a PostgreSQL instance running for Airflow to use as its backend.
+
+Step 1: Install and Configure Apache Airflow
+Initialize Airflow:
+Airflow uses SQLite by default but we will configure it to use PostgreSQL. Initialize the Airflow database:
+
+airflow db init
+Configure Airflow to use PostgreSQL:
+Edit the airflow.cfg file to configure the connection:
+
+nano ~/airflow/airflow.cfg
+Find the following line and replace it with your PostgreSQL connection details:
+
+sql_alchemy_conn = postgresql+psycopg2://airflow_user:airflow_password@localhost:5432/airflow
+Start the Airflow web server:
+Run the following commands to start Airflow components:
+
+airflow webserver -p 8080
+airflow scheduler
+You should now be able to access the Airflow UI at http://localhost:8080.
+
+Step 2: Design a DAG for the End-to-End ML Workflow
+1. Define the Machine Learning Pipeline Steps:
+We'll create a DAG that includes the following tasks:
+
+Data Ingestion: Load dataset.
+
+Preprocessing: Clean the data (handle missing values, scaling, etc.).
+
+Model Training: Train a model on the data.
+
+Model Evaluation: Evaluate the model's performance.
+
+2. Create the DAG File:
+In your Airflow directory, create a new Python file for the DAG:
+
+nano ~/airflow/dags/ml_pipeline_dag.py
+Insert the following code for the DAG definition:
+
+from datetime import datetime
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+# Define a function to ingest data
+def ingest_data():
+    print("Ingesting data...")
+    # Simulate data ingestion
+    df = pd.read_csv('https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv', header=None)
+    df.to_csv('/tmp/data.csv', index=False)
+    print("Data ingestion complete.")
+
+# Define a function for data preprocessing
+def preprocess_data():
+    print("Preprocessing data...")
+    df = pd.read_csv('/tmp/data.csv')
+    # Simulate preprocessing steps
+    df = df.dropna()
+    X = df.iloc[:, :-1].values
+    y = df.iloc[:, -1].values
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    return X_train, X_test, y_train, y_test
+
+# Define a function to train the model
+def train_model(X_train, y_train):
+    print("Training model...")
+    model = LogisticRegression()
+    model.fit(X_train, y_train)
+    model_filename = '/tmp/logistic_model.pkl'
+    # Save the model
+    import joblib
+    joblib.dump(model, model_filename)
+    print("Model training complete.")
+    return model_filename
+
+# Define a function to evaluate the model
+def evaluate_model(model_filename):
+    print("Evaluating model...")
+    model = joblib.load(model_filename)
+    df = pd.read_csv('/tmp/data.csv')
+    X = df.iloc[:, :-1].values
+    y = df.iloc[:, -1].values
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f"Model accuracy: {accuracy:.4f}")
+
+# Define the DAG
+dag = DAG('ml_pipeline', description='End-to-End ML Pipeline',
+          schedule_interval=None,
+          start_date=datetime(2023, 1, 1),
+          catchup=False)
+
+# Define the tasks
+task1 = PythonOperator(task_id='ingest_data', python_callable=ingest_data, dag=dag)
+task2 = PythonOperator(task_id='preprocess_data', python_callable=preprocess_data, dag=dag)
+task3 = PythonOperator(task_id='train_model', python_callable=train_model, op_args=["{{ task_instance.xcom_pull(task_ids='preprocess_data') }}"], dag=dag)
+task4 = PythonOperator(task_id='evaluate_model', python_callable=evaluate_model, op_args=["{{ task_instance.xcom_pull(task_ids='train_model') }}"], dag=dag)
+
+# Set up the task dependencies
+task1 >> task2 >> task3 >> task4
+3. Task Explanation:
+Ingest Data: Downloads and stores a dataset from a URL (in this case, the Pima Indians Diabetes dataset).
+
+Preprocess Data: Cleans the data and splits it into training and testing sets.
+
+Train Model: Trains a Logistic Regression model on the preprocessed data.
+
+Evaluate Model: Evaluates the model’s performance using accuracy on the test data.
+
+4. Run the DAG:
+Once the DAG is set up, you can trigger it manually through the Airflow UI or schedule it to run automatically.
+
+Access the Airflow web interface at http://localhost:8080.
+
+Find the ml_pipeline DAG and click on Trigger DAG to start the workflow.
+
+Monitor the task execution and view logs for each task to ensure everything is working.
+
+Conclusion
+In this lab, you:
+
+Installed and configured Apache Airflow on your machine.
+
+Designed an Airflow DAG to automate an end-to-end machine learning pipeline, including data ingestion, preprocessing, model training, and evaluation.
+
+Used PythonOperator to define tasks and set up dependencies for a complete workflow.
+
+This lab provides a foundational understanding of how to use Apache Airflow to automate and scale machine learning workflows, making it easier to manage and monitor complex pipelines in real-time.
