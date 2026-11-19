@@ -1,0 +1,157 @@
+Lab 7: Reinforcement Learning with OpenAI Gym
+Objective
+Explore reinforcement learning (RL) techniques using OpenAI Gym. You will set up the environment, implement an RL agent, and train it in a specific Gym environment. This will provide hands-on experience with RL concepts such as agents, rewards, and environment interaction.
+
+Prerequisites
+Ubuntu Machine
+
+Python 3.6+
+
+Basic understanding of machine learning and reinforcement learning concepts.
+
+Install the required dependencies:
+Install OpenAI Gym:
+
+pip install gym
+Install additional dependencies for some environments (e.g., atari for RL in game environments):
+
+pip install gym[all]
+Install a reinforcement learning library:
+We will use Stable-Baselines3, a popular library for RL agents:
+
+pip install stable-baselines3
+Install other dependencies (for visualization):
+
+pip install matplotlib numpy
+Step 1: Install and Configure OpenAI Gym
+Test OpenAI Gym Installation:
+After installing the Gym package, you can verify its installation by running a simple test:
+
+import gym
+
+# Create the environment
+env = gym.make("CartPole-v1")
+env.reset()  # Reset the environment to start
+env.render()  # Render the environment (visualize the simulation)
+Install additional environments:
+If you want to explore other environments (like Atari games), you may need additional packages:
+
+pip install gym[atari]
+Step 2: Implement a Reinforcement Learning Agent
+1. Choose an Environment
+For simplicity, we'll use the CartPole environment, where the goal is to balance a pole on a cart by applying forces to the cart.
+
+import gym
+
+# Create the CartPole environment
+env = gym.make("CartPole-v1")
+env.reset()
+2. Define the RL Agent
+We'll use Stable-Baselines3, which provides pre-built RL agents. Let's use the PPO (Proximal Policy Optimization) agent to train the CartPole environment.
+
+Import the necessary modules and set up the agent:
+from stable_baselines3 import PPO
+
+# Create and configure the agent (PPO)
+model = PPO("MlpPolicy", env, verbose=1)
+
+# Train the agent
+model.learn(total_timesteps=10000)
+Explanation:
+PPO("MlpPolicy", env, verbose=1) creates an agent using the PPO algorithm with a multi-layer perceptron policy.
+
+The learn function trains the agent on the environment for 10000 timesteps.
+
+3. Evaluate the RL Agent
+After training, we can evaluate the agent by letting it interact with the environment without training it further.
+
+# Test the trained agent
+obs = env.reset()
+for _ in range(1000):  # Run for 1000 timesteps
+    action, _states = model.predict(obs)
+    obs, reward, done, info = env.step(action)
+    env.render()  # Render the environment to visualize the agent
+    if done:
+        obs = env.reset()
+The agent will now take actions based on its learned policy to try to keep the pole balanced.
+
+Step 3: Modify the Training and Visualization
+1. Visualize the Training Process
+You can visualize the training process using the TensorBoard:
+
+Create a callback for logging:
+
+from stable_baselines3.common.callbacks import BaseCallback
+
+class TensorBoardCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super(TensorBoardCallback, self).__init__(verbose)
+    def _on_step(self):
+        return True
+Train the model with the callback:
+
+model.learn(total_timesteps=10000, callback=TensorBoardCallback())
+Launch TensorBoard:
+
+tensorboard --logdir ./logs
+After this, you can open http://localhost:6006 in your browser to monitor the training process in real-time.
+
+Step 4: Experiment with Different Algorithms
+In this lab, you’ve already used PPO. However, you can try other reinforcement learning algorithms available in Stable-Baselines3 such as:
+
+DQN (Deep Q-Network) for value-based methods
+
+A2C (Advantage Actor-Critic) for policy gradient methods
+
+Here’s an example of training a DQN agent:
+
+from stable_baselines3 import DQN
+
+# Create the environment
+env = gym.make("CartPole-v1")
+
+# Create and train the DQN agent
+model = DQN("MlpPolicy", env, verbose=1)
+model.learn(total_timesteps=10000)
+
+# Evaluate the agent
+obs = env.reset()
+for _ in range(1000):
+    action, _states = model.predict(obs)
+    obs, reward, done, info = env.step(action)
+    env.render()
+    if done:
+        obs = env.reset()
+Step 5: Implement Custom Reward Function (Optional)
+Reinforcement learning allows you to modify the environment's reward function. For example, if you want to encourage the agent to stay balanced longer, you could modify the environment’s reward function.
+
+# Define custom environment
+class CustomCartPole(gym.envs.classic_control.CartPoleEnv):
+    def step(self, action):
+        # Override the default step function
+        state, reward, done, info = super().step(action)
+        
+        # Add custom reward logic
+        reward += 1  # Reward the agent for each step it survives
+        return state, reward, done, info
+
+# Create the custom environment
+env = CustomCartPole()
+Step 6: Save and Load the Model
+After training your model, you can save it for future use, allowing you to avoid retraining.
+
+# Save the trained model
+model.save("ppo_cartpole_model")
+
+# Load the model
+loaded_model = PPO.load("ppo_cartpole_model")
+Conclusion
+In this lab, you:
+
+Installed and configured OpenAI Gym and set up a simple environment (CartPole-v1).
+
+Implemented a reinforcement learning agent using Stable-Baselines3 with the PPO algorithm.
+
+Evaluated the trained agent by running it in the environment and visualizing its performance.
+
+Explored how to experiment with other algorithms (such as DQN) and modify training parameters.
