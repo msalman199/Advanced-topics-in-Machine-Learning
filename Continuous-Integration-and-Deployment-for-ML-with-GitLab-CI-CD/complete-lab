@@ -1,0 +1,201 @@
+Lab 6: Continuous Integration and Deployment for ML with GitLab CI/CD
+Objective
+This lab will guide you through setting up GitLab CI/CD for automating key steps in your machine learning workflow. You will:
+
+Configure a GitLab Runner for running CI/CD jobs.
+
+Set up a CI/CD pipeline to automate model training, testing, and deployment.
+
+Prerequisites
+GitLab account (either on GitLab.com or a self-hosted GitLab instance).
+
+GitLab Runner installed and configured on your machine (or a server).
+
+Machine Learning project in a Git repository (use a simple example with a model training script).
+
+Install GitLab Runner on Ubuntu:
+Install GitLab Runner:
+
+sudo apt-get update
+sudo apt-get install -y gitlab-runner
+Register the GitLab Runner:
+To register the runner, you'll need a GitLab project and the GitLab Runner registration token. You can find the token in your GitLab project under Settings → CI / CD → Runners.
+
+sudo gitlab-runner register
+Enter the GitLab instance URL (e.g., https://gitlab.com for the hosted version).
+
+Enter the GitLab token.
+
+Choose the executor (use shell for simplicity in local environments).
+
+Provide a description (e.g., ML Runner).
+
+Set the tags (optional).
+
+Define the runner’s working directory (e.g., /home/gitlab-runner).
+
+Start the GitLab Runner:
+
+sudo gitlab-runner start
+Step 1: Set Up GitLab CI/CD Pipeline for ML Project
+1. Prepare a Sample Machine Learning Project
+If you don't have an existing ML project, create a simple one with the following structure:
+
+my_ml_project/
+│
+├── model.py                # Model training script
+├── requirements.txt        # Dependencies
+├── test_model.py           # Test script to validate the model
+├── .gitlab-ci.yml          # GitLab CI/CD pipeline configuration
+└── data/                   # Data folder (can be linked or uploaded to the GitLab repository)
+Example of model.py:
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import joblib
+
+# Load Iris dataset
+data = load_iris()
+X = data.data
+y = data.target
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+# Train a logistic regression model
+model = LogisticRegression(max_iter=200)
+model.fit(X_train, y_train)
+
+# Save the model
+joblib.dump(model, 'iris_model.pkl')
+
+# Evaluate the model
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Model Accuracy: {accuracy:.2f}")
+Example of test_model.py:
+import joblib
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+# Load the trained model
+model = joblib.load('iris_model.pkl')
+
+# Load the Iris dataset and split into test/train
+data = load_iris()
+X = data.data
+y = data.target
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+# Predict using the trained model
+y_pred = model.predict(X_test)
+
+# Check accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Test Accuracy: {accuracy:.2f}")
+2. Create a .gitlab-ci.yml Configuration File
+In the root of your project, create the .gitlab-ci.yml file. This is where the CI/CD pipeline is defined.
+
+nano .gitlab-ci.yml
+Add the following content to the .gitlab-ci.yml file:
+
+stages:
+  - train
+  - test
+  - deploy
+
+variables:
+  CONTAINER_IMAGE: "python:3.8-slim"
+
+# Define the 'train' stage
+train_model:
+  stage: train
+  image: $CONTAINER_IMAGE
+  script:
+    - pip install -r requirements.txt
+    - python model.py
+  artifacts:
+    paths:
+      - iris_model.pkl
+    expire_in: 1 hour
+
+# Define the 'test' stage
+test_model:
+  stage: test
+  image: $CONTAINER_IMAGE
+  script:
+    - pip install -r requirements.txt
+    - python test_model.py
+  dependencies:
+    - train_model
+
+# Define the 'deploy' stage (example for deployment)
+deploy_model:
+  stage: deploy
+  image: $CONTAINER_IMAGE
+  script:
+    - echo "Deploying model..."
+    # Add deployment steps like uploading to cloud, deploying in a container, etc.
+    - echo "Model deployed successfully"
+  dependencies:
+    - test_model
+Explanation:
+stages: Defines the pipeline stages (train, test, and deploy).
+
+train_model: This job installs dependencies and trains the model.
+
+test_model: This job installs dependencies and tests the model using the test_model.py script. It depends on the train_model job, meaning it runs after training.
+
+deploy_model: This is an optional job that simulates deployment, where you could integrate deployment steps (e.g., model containerization or upload to cloud storage).
+
+3. Install Dependencies with requirements.txt
+In your project directory, create a requirements.txt file with the necessary libraries for your ML project:
+
+nano requirements.txt
+Add the following dependencies:
+
+scikit-learn==0.24.2
+joblib==1.0.1
+4. Push the Project to GitLab
+Now that you have set up the .gitlab-ci.yml file, commit and push the code to your GitLab repository:
+
+git init
+git add .
+git commit -m "Initial commit for ML project"
+git remote add origin https://gitlab.com/your-username/your-repository.git
+git push -u origin master
+Step 2: Monitor the Pipeline in GitLab
+Access the GitLab Web Interface:
+Go to your GitLab repository in your browser.
+
+Check the Pipeline:
+After pushing the code, GitLab will automatically trigger the pipeline. You can check the pipeline status by navigating to CI / CD → Pipelines.
+
+Review the Stages:
+
+Each job (train_model, test_model, and deploy_model) will run in sequence.
+
+You can monitor the logs for each job and ensure that the model training, testing, and deployment are happening as expected.
+
+Step 3: Scale the Pipeline for Larger ML Projects
+As your ML project grows, you can scale the pipeline by:
+
+Adding more advanced preprocessing steps to the pipeline.
+
+Using Docker to containerize the ML model and dependencies for consistency.
+
+Integrating model versioning tools (like MLflow or DVC) for better model management.
+
+Conclusion
+In this lab, you:
+
+Set up a GitLab Runner on your machine to handle CI/CD jobs.
+
+Created a GitLab CI/CD pipeline that automates model training, testing, and deployment for machine learning projects.
+
+Learned how to monitor and manage the pipeline using GitLab’s CI/CD interface.
+
+This lab introduces you to DevOps practices for ML by automating workflows through GitLab CI/CD, which can improve productivity, consistency, and scalability in ML model development.
